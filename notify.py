@@ -27,6 +27,7 @@ def send_telegram(text: str) -> bool:
             json={
                 "chat_id": config.TELEGRAM_CHAT_ID,
                 "text": text,
+                "parse_mode": "HTML",
                 "disable_web_page_preview": True,
             },
             timeout=15,

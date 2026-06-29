@@ -73,29 +73,28 @@ def build_entry_orders(decision: dict, use_limit_entry: bool = False) -> dict:
 
 
 def format_alert(decision: dict, use_limit_entry: bool = False) -> str:
-    """Human-readable Telegram/email message for one BUY idea."""
+    """Clean, mobile-friendly Telegram/email message for one BUY idea (HTML)."""
     o = build_entry_orders(decision, use_limit_entry)
     sym = o["symbol"]
-    boosters = ", ".join(decision.get("boosters", [])) or "—"
+    entry = decision["entry"]
+    entry_kind = "Market BUY now" if not use_limit_entry else f"Limit BUY @ ${entry:.2f}"
+    risk_per_share = max(entry - decision["stop"], 0.01)
 
     lines = [
-        f"🟢 BUY SIGNAL · {sym}",
-        f"Setup: Wyckoff {decision['phase']} + {decision.get('trigger', 'SMC')}",
-        f"Confluence: {boosters}   |   RSI {decision.get('rsi', '—')}   |   score {decision['score']}",
+        f"🟢 <b>BUY · {sym}</b>   (score {decision['score']})",
+        f"Wyckoff {decision['phase']} + {decision.get('trigger', 'SMC')}",
         "",
-        "📋 Place these in Blink (by hand):",
-        f"1) ENTRY — {o['entry']['type']} BUY",
-        f"   {o['entry']['note']}",
-        f"2) STOP-LOSS — Stop SELL @ ${decision['stop']:.2f}",
-        f"   {o['stop_loss']['note']}",
-        f"3) TAKE-PROFIT — Limit SELL @ ${decision['target']:.2f}",
-        f"   {o['take_profit']['note']}",
+        "<b>Place in Blink:</b>",
+        f"① <b>Entry</b>  {entry_kind}  (~${entry:.2f})",
+        f"② <b>Stop</b>   Sell Stop @ ${decision['stop']:.2f}  (−{decision['stop_pct']}%)",
+        f"③ <b>Target</b> Sell Limit @ ${decision['target']:.2f}  (+{decision['target_pct']}%)",
         "",
-        f"↪ Optional — {o['trailing_alt']['note']}",
+        f"Reward : Risk = <b>{o['rr']} : 1</b>   ·   risk/share ≈ ${risk_per_share:.2f}",
+        f"Size: ~{int(config.POSITION_SIZE * 100)}% of capital (your call)",
         "",
-        f"Reward:Risk = {o['rr']} : 1",
-        o["sizing"],
+        f"<i>Tip: a Trailing Stop at {decision['stop_pct']}% can replace the fixed stop "
+        "to ride gains.</i>",
         "",
-        config.DISCLAIMER,
+        "⚠️ <i>Signal only — not advice. You place and own every order.</i>",
     ]
     return "\n".join(lines)

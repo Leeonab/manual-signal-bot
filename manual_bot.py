@@ -78,10 +78,9 @@ def monitor_open() -> list[dict]:
     for c in closed:
         emoji = "🎯" if c["result"] == "TARGET" else "🛑"
         msg = (
-            f"{emoji} {c['symbol']} closed @ ${c['exit']} ({c['result']}) "
-            f"→ {c['pnl_pct']:+.2f}%\n\n"
-            "If you took this in Blink, your stop/target should have handled it.\n\n"
-            + config.DISCLAIMER
+            f"{emoji} <b>{c['symbol']}</b> closed @ ${c['exit']} ({c['result']})   "
+            f"<b>{c['pnl_pct']:+.2f}%</b>\n\n"
+            "<i>If you took this in Blink, your stop/target should have handled it.</i>"
         )
         notify(f"{c['symbol']} closed", msg)
     return closed

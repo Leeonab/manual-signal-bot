@@ -150,30 +150,27 @@ def eod_summary_text() -> str:
     state = load()
     closed = state["closed_signals"]
     n = len(closed)
-    lines = [f"📊 End-of-day signal recap · {state['today']}", ""]
+    lines = [f"📊 <b>End-of-Day Recap · {state['today']}</b>", ""]
     if n == 0:
         lines.append("No signals fired today.")
     else:
         for c in closed:
             sign = "✅" if c["pnl_pct"] >= 0 else "🔻"
             lines.append(
-                f"{sign} {c['symbol']}  {c['result']}  "
-                f"entry ${c['entry']} → exit ${c['exit']}  ({c['pnl_pct']:+.2f}%)"
+                f"{sign} <b>{c['symbol']}</b>  {c['result']}   "
+                f"${c['entry']} → ${c['exit']}   (<b>{c['pnl_pct']:+.2f}%</b>)"
             )
         wins, losses = state["wins"], state["losses"]
         wr = (wins / n * 100) if n else 0
         lines += [
             "",
-            f"Record: {wins}W / {losses}L  ({wr:.0f}% win rate)",
-            f"Net signal performance: {state['signal_pnl_pct']:+.2f}% "
-            f"(sum of per-trade %, 1 unit each)",
+            f"Record: <b>{wins}W / {losses}L</b>  ({wr:.0f}% win rate)",
+            f"Net signal performance: <b>{state['signal_pnl_pct']:+.2f}%</b>",
         ]
     lines += [
         "",
-        "Note: this is the SIGNALS' hypothetical result from suggested entries — "
-        "not your real Blink P/L. Reply /log to record what you actually did.",
-        "",
-        config.DISCLAIMER,
+        "<i>This is the signals' hypothetical result from suggested entries — "
+        "not your real Blink P/L. Use /log to record your actual trades.</i>",
     ]
     return "\n".join(lines)
 

@@ -81,22 +81,27 @@ def run_screen(universe: list[str] | None = None, top_n: int | None = None) -> l
 
 
 def format_watchlist(picks: list[dict]) -> str:
-    """Pre-market watchlist message."""
+    """Pre-market watchlist message (clean, mobile-friendly HTML)."""
+    from datetime import datetime
+
     if not picks:
-        return "Pre-market screen: no candidates passed today."
-    lines = ["📅 Today's watchlist (top picks to day-trade):", ""]
+        return "📋 <b>Pre-market screen</b>\nNo candidates passed today."
+
+    today = datetime.now(config.TZ).strftime("%b %d")
+    lines = [f"📋 <b>Today's Watchlist · {today}</b>", "Top day-trade picks (long bias)", ""]
     for i, p in enumerate(picks, 1):
-        trend = "↑trend" if p["above_trend"] else "↓below-trend"
-        lines.append(
-            f"{i}. {p['symbol']}  ${p['last']}  "
-            f"[ATR {p['atr_pct']}% · RVOL {p['rel_vol']}x · {trend} · gap {p['gap_pct']}%]  "
-            f"score {p['score']}"
-        )
+        trend = "↑ trend" if p["above_trend"] else "↓ below trend"
+        lines.append(f"<b>{i}. {p['symbol']}</b>  ${p['last']}   ·   score {round(p['score'])}")
+        lines.append(f"     ATR {p['atr_pct']}%  ·  RVOL {p['rel_vol']}×  ·  {trend}")
+        lines.append("")
     lines += [
+        "I'll ping you the moment a Wyckoff+SMC long setup triggers, "
+        "with the exact Blink orders to place.",
         "",
-        "I'll watch these intraday and ping you the moment a Wyckoff+SMC "
-        "long setup triggers, with the exact Blink orders.",
-        "",
-        config.DISCLAIMER,
+        f"⚠️ <i>{_short_disclaimer()}</i>",
     ]
     return "\n".join(lines)
+
+
+def _short_disclaimer() -> str:
+    return "Signal only — not advice. You place and own every order."
