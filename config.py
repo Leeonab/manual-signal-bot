@@ -75,29 +75,29 @@ SCHED_EOD_SUMMARY = "22:50"      # end-of-day P/L + recap
 # ---------------------------------------------------------------------------
 # Alpaca market data (DATA ONLY — this bot has no trading endpoint calls)
 # ---------------------------------------------------------------------------
-ALPACA_API_KEY = os.getenv("ALPACA_API_KEY", "")
-ALPACA_SECRET_KEY = os.getenv("ALPACA_SECRET_KEY", "")
+ALPACA_API_KEY = os.getenv("ALPACA_API_KEY", "").strip()
+ALPACA_SECRET_KEY = os.getenv("ALPACA_SECRET_KEY", "").strip()
 ALPACA_DATA_URL = "https://data.alpaca.markets"   # NOT paper-api (no data there)
 ALPACA_FEED = "iex"
 
 # ---------------------------------------------------------------------------
 # News (optional, reuses the paper bot's approach)
 # ---------------------------------------------------------------------------
-FINNHUB_KEY = os.getenv("FINNHUB_KEY", "")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+FINNHUB_KEY = os.getenv("FINNHUB_KEY", "").strip()
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
 # ---------------------------------------------------------------------------
 # Notifications — NEW dedicated Telegram bot (separate from the paper bot)
 # ---------------------------------------------------------------------------
 # Create a brand-new bot via @BotFather and put its token here, so manual
 # signals never blur with the paper bot's alerts.
-TELEGRAM_TOKEN = os.getenv("MANUAL_TELEGRAM_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("MANUAL_TELEGRAM_CHAT_ID", "")
+TELEGRAM_TOKEN = os.getenv("MANUAL_TELEGRAM_TOKEN", "").strip()
+TELEGRAM_CHAT_ID = os.getenv("MANUAL_TELEGRAM_CHAT_ID", "").strip()
 
 # Optional email mirror via Resend (Railway blocks SMTP)
-RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
-EMAIL_TO = os.getenv("EMAIL_TO", "")
-EMAIL_FROM = os.getenv("EMAIL_FROM", "onboarding@resend.dev")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
+EMAIL_TO = os.getenv("EMAIL_TO", "").strip()
+EMAIL_FROM = os.getenv("EMAIL_FROM", "onboarding@resend.dev").strip()
 
 # ---------------------------------------------------------------------------
 # State
