@@ -45,7 +45,10 @@ def get_bars(symbol: str, timeframe: str = "1Min", limit: int = 120) -> pd.DataF
     """
     url = f"{config.ALPACA_DATA_URL}/v2/stocks/{symbol}/bars"
     end = dt.datetime.utcnow()
-    start = end - dt.timedelta(days=5)
+    # Daily bars need a long window to gather enough history (≈40 trading
+    # days ≈ 8 weeks, plus holidays). Intraday bars only need a few days.
+    lookback_days = 200 if "Day" in timeframe or "Week" in timeframe else 5
+    start = end - dt.timedelta(days=lookback_days)
     params = {
         "timeframe": timeframe,
         "limit": limit,
