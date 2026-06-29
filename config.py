@@ -27,14 +27,17 @@ US_MARKET_TZ = ZoneInfo("America/New_York")
 # The daily screener ranks this universe and picks the best ~5 to trade today.
 # Keep it liquid and Blink-tradable. The original paper bot's 8 names are the
 # core; the rest widen the pool so the daily pick is meaningful.
+# Tuned for a small account day-trading up to ~$1000/trade: liquid, high
+# intraday movement, mostly lower/mid share prices so $1000 buys a workable
+# number of shares. NOT predictions — just names with the liquidity + volatility
+# a day-trade screen needs. The daily screener still ranks these each morning.
 UNIVERSE = [
-    # original 8
-    "NVDA", "TSLA", "AAPL", "IBIT", "ETHA", "GLD", "XOM", "SPCX",
-    # large-cap / high-volume stocks
-    "MSFT", "AMZN", "META", "GOOGL", "AMD", "AVGO", "NFLX", "COIN",
-    "MSTR", "PLTR", "SMCI", "MU", "BABA", "UBER", "DIS", "BA",
-    # ETFs / commodities
-    "SLV", "SPY", "QQQ", "IWM", "USO", "GDX",
+    # liquid, high-beta movers (mostly lower/mid priced)
+    "NVDA", "TSLA", "AAPL", "AMD", "PLTR", "SOFI", "F", "INTC",
+    "NIO", "RIVN", "LCID", "HOOD", "COIN", "MARA", "RIOT", "SMCI",
+    "MU", "UBER", "BABA", "AAL", "CCL", "NU", "T",
+    # liquid, volatile ETFs
+    "SPY", "QQQ", "IWM", "GLD", "SLV", "IBIT", "USO", "SOXL",
 ]
 
 DAILY_PICK_COUNT = 5          # how many names to trade on a given day
@@ -43,6 +46,7 @@ DAILY_PICK_COUNT = 5          # how many names to trade on a given day
 # Strategy / risk parameters  (mirror the paper bot)
 # ---------------------------------------------------------------------------
 POSITION_SIZE = 0.10          # suggested 10% of capital per trade (advisory only)
+TRADE_SIZE_USD = 1000         # approx $ you put into one trade (for share-count hint)
 MAX_OPEN_SIGNALS = 3          # don't suggest more than 3 live "open" ideas at once
 COOLDOWN_MINUTES = 60         # after a name's signal closes, wait before re-alerting
 MIN_RR = 1.5                  # minimum reward:risk to emit a signal

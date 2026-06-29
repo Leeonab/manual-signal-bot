@@ -19,14 +19,18 @@ from __future__ import annotations
 import config
 
 
-def _position_size_hint(entry: float, stop: float) -> str:
-    """Advisory sizing note. Suggests shares for a 10% slice AND a risk note."""
+def _size_for_trade(entry: float, stop: float) -> dict:
+    """Concrete sizing for an ~TRADE_SIZE_USD position."""
     risk_per_share = max(entry - stop, 0.01)
-    return (
-        f"Sizing (advisory): ~{int(config.POSITION_SIZE * 100)}% of capital. "
-        f"Risk/share ≈ ${risk_per_share:.2f} (entry − stop). "
-        f"Shares = (amount you risk on this trade) ÷ ${risk_per_share:.2f}."
-    )
+    shares = max(int(config.TRADE_SIZE_USD / entry), 1)
+    cost = shares * entry
+    dollar_risk = shares * risk_per_share
+    return {
+        "shares": shares,
+        "cost": cost,
+        "risk_per_share": risk_per_share,
+        "dollar_risk": dollar_risk,
+    }
 
 
 def build_entry_orders(decision: dict, use_limit_entry: bool = False) -> dict:
@@ -68,7 +72,7 @@ def build_entry_orders(decision: dict, use_limit_entry: bool = False) -> dict:
                     f"locks gains automatically.",
         },
         "rr": decision["rr"],
-        "sizing": _position_size_hint(entry, stop),
+        "sizing": _size_for_trade(entry, stop),
     }
 
 
@@ -78,7 +82,7 @@ def format_alert(decision: dict, use_limit_entry: bool = False) -> str:
     sym = o["symbol"]
     entry = decision["entry"]
     entry_kind = "Market BUY now" if not use_limit_entry else f"Limit BUY @ ${entry:.2f}"
-    risk_per_share = max(entry - decision["stop"], 0.01)
+    s = o["sizing"]
 
     lines = [
         f"🟢 <b>BUY · {sym}</b>   (score {decision['score']})",
@@ -89,8 +93,8 @@ def format_alert(decision: dict, use_limit_entry: bool = False) -> str:
         f"② <b>Stop</b>   Sell Stop @ ${decision['stop']:.2f}  (−{decision['stop_pct']}%)",
         f"③ <b>Target</b> Sell Limit @ ${decision['target']:.2f}  (+{decision['target_pct']}%)",
         "",
-        f"Reward : Risk = <b>{o['rr']} : 1</b>   ·   risk/share ≈ ${risk_per_share:.2f}",
-        f"Size: ~{int(config.POSITION_SIZE * 100)}% of capital (your call)",
+        f"💵 <b>Buy ~{s['shares']} shares</b> (≈${s['cost']:.0f})",
+        f"Risk ≈ <b>${s['dollar_risk']:.2f}</b> if stopped  ·  R:R <b>{o['rr']}:1</b>",
         "",
         f"<i>Tip: a Trailing Stop at {decision['stop_pct']}% can replace the fixed stop "
         "to ride gains.</i>",
