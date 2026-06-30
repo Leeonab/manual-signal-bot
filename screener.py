@@ -77,7 +77,14 @@ def run_screen(universe: list[str] | None = None, top_n: int | None = None) -> l
         ranked.append(metrics)
 
     ranked.sort(key=lambda x: x["score"], reverse=True)
-    return ranked[:top_n]
+    picks = ranked[:top_n]
+
+    # Show the real-time consolidated price (matches Blink) for the picks.
+    for p in picks:
+        real = data.get_realtime_price(p["symbol"])
+        if real:
+            p["last"] = round(real, 2)
+    return picks
 
 
 def format_watchlist(picks: list[dict]) -> str:

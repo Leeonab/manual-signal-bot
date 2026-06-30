@@ -90,6 +90,11 @@ ALPACA_FEED = "iex"
 FINNHUB_KEY = os.getenv("FINNHUB_KEY", "").strip()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
+# Real-time price accuracy: Finnhub /quote gives the consolidated price (matches
+# Blink). If the IEX bar the strategy used differs from the real price by more
+# than this %, the feed is stale → skip the signal instead of sending a bad one.
+STALE_THRESHOLD_PCT = 1.5
+
 # ---------------------------------------------------------------------------
 # Notifications — NEW dedicated Telegram bot (separate from the paper bot)
 # ---------------------------------------------------------------------------

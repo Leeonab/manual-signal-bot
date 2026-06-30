@@ -79,6 +79,28 @@ def get_latest_price(symbol: str) -> float | None:
     return None
 
 
+def get_realtime_price(symbol: str) -> float | None:
+    """
+    Real-time consolidated price via Finnhub /quote (matches what Blink shows).
+    Returns the current price, or None if Finnhub isn't configured / call fails.
+    """
+    if not config.FINNHUB_KEY:
+        return None
+    try:
+        resp = requests.get(
+            "https://finnhub.io/api/v1/quote",
+            params={"symbol": symbol, "token": config.FINNHUB_KEY},
+            headers={"User-Agent": "manual-signal-bot"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        c = resp.json().get("c")
+        return float(c) if c else None
+    except Exception as exc:  # noqa: BLE001
+        print(f"[data] finnhub quote error {symbol}: {exc}")
+        return None
+
+
 def market_is_open() -> bool:
     """Check Alpaca's clock. Uses the trading host's /v2/clock (read-only)."""
     url = "https://paper-api.alpaca.markets/v2/clock"

@@ -57,11 +57,30 @@ def scan_for_signals(allow_new: bool = True) -> list[dict]:
 
         decision = decide(sym, df5, df1)
         if decision["action"] == "BUY":
+            # Verify against the real-time consolidated price (matches Blink).
+            real = data.get_realtime_price(sym)
+            if real:
+                bar_price = decision["entry"]
+                drift = abs(real - bar_price) / real * 100
+                if drift > config.STALE_THRESHOLD_PCT:
+                    print(f"[scan] {sym} skipped: stale feed "
+                          f"(bar ${bar_price} vs real ${real}, {drift:.1f}% off)")
+                    continue
+                decision = _reanchor(decision, real)
             tracker.record_signal(decision)
             notify(f"BUY signal {sym}", format_alert(decision))
             fired.append(decision)
 
     return fired
+
+
+def _reanchor(decision: dict, real_price: float) -> dict:
+    """Re-anchor the bracket to the real-time price, keeping the % distances."""
+    sp, tp = decision["stop_pct"], decision["target_pct"]
+    decision["entry"] = round(real_price, 2)
+    decision["stop"] = round(real_price * (1 - sp / 100), 2)
+    decision["target"] = round(real_price * (1 + tp / 100), 2)
+    return decision
 
 
 def monitor_open() -> list[dict]:
@@ -73,7 +92,8 @@ def monitor_open() -> list[dict]:
     if not symbols:
         return []
 
-    prices = {s: data.get_latest_price(s) for s in symbols}
+    # Prefer the real-time consolidated price; fall back to the IEX bar.
+    prices = {s: (data.get_realtime_price(s) or data.get_latest_price(s)) for s in symbols}
     closed = tracker.update_open(prices)
     for c in closed:
         emoji = "🎯" if c["result"] == "TARGET" else "🛑"
@@ -92,7 +112,7 @@ def run_eod() -> str:
 
     state = tracker.load()
     symbols = [s["symbol"] for s in state["open_signals"]]
-    prices = {s: data.get_latest_price(s) for s in symbols}
+    prices = {s: (data.get_realtime_price(s) or data.get_latest_price(s)) for s in symbols}
     tracker.close_all_eod(prices)
     summary = tracker.eod_summary_text()
     notify("EOD recap", summary)
