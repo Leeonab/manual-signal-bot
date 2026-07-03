@@ -73,8 +73,11 @@ POLL_INTERVAL = 60           # seconds between bar polls during the session
 SCHED_HEARTBEAT = "09:00"        # "bot active" ping
 SCHED_PREMARKET_SCREEN = "16:00" # run the daily 5-pick screen, send watchlist
 SCHED_SESSION_START = "16:30"    # US open ~ start emitting live signals
-SCHED_STOP_NEW = "22:00"         # stop emitting NEW buy ideas
+SCHED_STOP_NEW = "22:00"         # (legacy, unused) stop emitting NEW buy ideas
 SCHED_EOD_SUMMARY = "22:50"      # end-of-day P/L + recap
+# Stop opening NEW ideas when fewer than this many minutes remain until the US
+# close (driven by the real market clock, so it's DST/holiday-proof).
+STOP_NEW_MIN_BEFORE_CLOSE = 60
 
 # ---------------------------------------------------------------------------
 # Alpaca market data (DATA ONLY — this bot has no trading endpoint calls)

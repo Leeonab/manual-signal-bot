@@ -55,6 +55,12 @@ def get_bars(symbol: str, timeframe: str = "1Min", limit: int = 120) -> pd.DataF
         "feed": config.ALPACA_FEED,
         "start": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "adjustment": "raw",
+        # CRITICAL: sort desc so we get the MOST RECENT `limit` bars. Without
+        # this, Alpaca returns the OLDEST bars from `start` (e.g. data from
+        # months / days ago), which made the screen pick the same names every
+        # day and the strategy fire on stale prices. _bars_to_df re-sorts to
+        # chronological order for the indicators.
+        "sort": "desc",
     }
     try:
         resp = _SESSION.get(url, params=params, timeout=15)
@@ -101,8 +107,31 @@ def get_realtime_price(symbol: str) -> float | None:
         return None
 
 
+def get_clock() -> dict:
+    """
+    Alpaca market clock (authoritative — handles US holidays/DST for us).
+    Returns {is_open: bool, minutes_to_close: float | None}.
+    """
+    url = "https://paper-api.alpaca.markets/v2/clock"
+    try:
+        resp = _SESSION.get(url, timeout=10)
+        resp.raise_for_status()
+        j = resp.json()
+        is_open = bool(j.get("is_open", False))
+        mins = None
+        nc = j.get("next_close")
+        if is_open and nc:
+            close_dt = dt.datetime.fromisoformat(nc.replace("Z", "+00:00"))
+            now = dt.datetime.now(dt.timezone.utc)
+            mins = (close_dt - now).total_seconds() / 60.0
+        return {"is_open": is_open, "minutes_to_close": mins}
+    except Exception as exc:  # noqa: BLE001
+        print(f"[data] clock error: {exc}")
+        return {"is_open": False, "minutes_to_close": None}
+
+
 def market_is_open() -> bool:
-    """Check Alpaca's clock. Uses the trading host's /v2/clock (read-only)."""
+    """Backward-compatible boolean wrapper around get_clock()."""
     url = "https://paper-api.alpaca.markets/v2/clock"
     try:
         resp = _SESSION.get(url, timeout=10)

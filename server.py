@@ -93,17 +93,21 @@ def _scheduler():
         time.sleep(20)
 
 
-def _within_session(t: datetime) -> bool:
-    return config.SCHED_SESSION_START <= _hm(t) <= config.SCHED_EOD_SUMMARY
-
-
 def _poll_loop():
     while True:
         try:
             t = _now()
-            _STATE["market_open"] = data.market_is_open()
-            if _STATE["market_open"] and t.weekday() < 5 and _within_session(t):
-                allow_new = _hm(t) < config.SCHED_STOP_NEW
+            # Drive purely off the real market clock (DST/holiday-proof) rather
+            # than a hardcoded Israel-time window.
+            clock = data.get_clock()
+            _STATE["market_open"] = clock["is_open"]
+            if clock["is_open"]:
+                # Restart-safety: if the service restarted mid-session and has no
+                # watchlist for today, run the screen now instead of falling back.
+                if not tracker.load().get("watchlist"):
+                    manual_bot.run_premarket_screen()
+                mtc = clock["minutes_to_close"]
+                allow_new = (mtc is None) or (mtc > config.STOP_NEW_MIN_BEFORE_CLOSE)
                 manual_bot.scan_for_signals(allow_new=allow_new)
                 manual_bot.monitor_open()
             _STATE["last_poll"] = t.isoformat()
