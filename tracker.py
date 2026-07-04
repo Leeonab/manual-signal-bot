@@ -76,12 +76,13 @@ def open_count() -> int:
 def record_signal(decision: dict) -> dict:
     """Store an emitted BUY signal as an open position to monitor."""
     state = load()
+    entry = decision["entry"]
     state["open_signals"].append(
         {
             "symbol": decision["symbol"],
-            "entry": decision["entry"],
-            "stop": decision["stop"],
-            "target": decision["target"],
+            "entry": entry,
+            "trail_pct": decision.get("trail_pct", config.TRAIL_MIN_PCT),
+            "peak": entry,  # highest price seen since entry (for trailing sim)
             "time": datetime.now(config.TZ).strftime("%H:%M"),
             "trigger": decision.get("trigger"),
         }
@@ -92,8 +93,9 @@ def record_signal(decision: dict) -> dict:
 
 def update_open(prices: dict[str, float]) -> list[dict]:
     """
-    Check open signals against live prices. Resolve any that hit stop/target.
-    Returns the list of newly-closed signals (for notification).
+    Simulate a Trailing Stop on each open signal: track the peak since entry,
+    and exit when price falls `trail_pct` below that peak. Mirrors what the
+    Blink Trailing Stop order does. Returns newly-closed signals.
     """
     state = load()
     closed_now = []
@@ -103,16 +105,14 @@ def update_open(prices: dict[str, float]) -> list[dict]:
         if px is None:
             still_open.append(sig)
             continue
-        outcome = None
-        if px <= sig["stop"]:
-            outcome = ("STOP", sig["stop"])
-        elif px >= sig["target"]:
-            outcome = ("TARGET", sig["target"])
-        if outcome:
-            label, exit_px = outcome
+        peak = max(sig.get("peak", sig["entry"]), px)
+        trail = sig.get("trail_pct", config.TRAIL_MIN_PCT)
+        trailing_stop = peak * (1 - trail / 100.0)
+        if px <= trailing_stop:
+            exit_px = round(trailing_stop, 2)
             pnl_pct = (exit_px - sig["entry"]) / sig["entry"] * 100.0
-            rec = {**sig, "exit": round(exit_px, 2), "result": label,
-                   "pnl_pct": round(pnl_pct, 2)}
+            rec = {**sig, "peak": round(peak, 2), "exit": exit_px,
+                   "result": "TRAIL", "pnl_pct": round(pnl_pct, 2)}
             closed_now.append(rec)
             state["closed_signals"].append(rec)
             if pnl_pct >= 0:
@@ -121,6 +121,7 @@ def update_open(prices: dict[str, float]) -> list[dict]:
                 state["losses"] += 1
             state["signal_pnl_pct"] = round(state["signal_pnl_pct"] + pnl_pct, 2)
         else:
+            sig["peak"] = round(peak, 2)   # persist the new high
             still_open.append(sig)
     state["open_signals"] = still_open
     save(state)

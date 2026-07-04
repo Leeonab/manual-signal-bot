@@ -60,9 +60,14 @@ TP_ATR_MULT = 2.0
 TP_MIN_PCT = 0.008           # 0.8%
 TP_MAX_PCT = 0.025           # 2.5%
 
-# Trailing-stop tightening (advisory text in the alert)
-TRAIL_BREAKEVEN_AT = 0.010   # +1.0% -> move stop to breakeven
-TRAIL_LOCK_AT = 0.015        # +1.5% -> move stop to +0.5% above entry
+# Blink exit is a single Sell Trailing Stop. The trail distance = the strategy's
+# ATR stop, but never tighter than this floor (tight trails whipsaw on volatile
+# names). You can widen it in the app if you see early exits.
+TRAIL_MIN_PCT = 1.0
+
+# (legacy advisory, unused)
+TRAIL_BREAKEVEN_AT = 0.010
+TRAIL_LOCK_AT = 0.015
 TRAIL_LOCK_TO = 0.005
 
 POLL_INTERVAL = 60           # seconds between bar polls during the session

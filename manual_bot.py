@@ -13,7 +13,7 @@ from __future__ import annotations
 import config
 import data
 import tracker
-from blink_orders import format_alert
+from blink_orders import format_alert, trail_pct_for
 from screener import run_screen, format_watchlist
 from smc_wyckoff import decide
 
@@ -67,6 +67,7 @@ def scan_for_signals(allow_new: bool = True) -> list[dict]:
                           f"(bar ${bar_price} vs real ${real}, {drift:.1f}% off)")
                     continue
                 decision = _reanchor(decision, real)
+            decision["trail_pct"] = trail_pct_for(decision)
             tracker.record_signal(decision)
             notify(f"BUY signal {sym}", format_alert(decision))
             fired.append(decision)
@@ -96,13 +97,13 @@ def monitor_open() -> list[dict]:
     prices = {s: (data.get_realtime_price(s) or data.get_latest_price(s)) for s in symbols}
     closed = tracker.update_open(prices)
     for c in closed:
-        emoji = "🎯" if c["result"] == "TARGET" else "🛑"
+        emoji = "🎯" if c["pnl_pct"] >= 0 else "🛑"
         msg = (
-            f"{emoji} <b>{c['symbol']}</b> closed @ ${c['exit']} ({c['result']})   "
+            f"{emoji} <b>{c['symbol']}</b> trailing stop hit @ ${c['exit']}   "
             f"<b>{c['pnl_pct']:+.2f}%</b>\n\n"
-            "<i>If you took this in Blink, your stop/target should have handled it.</i>"
+            "<i>If you're in this on Blink, your Trailing Stop sold automatically.</i>"
         )
-        notify(f"{c['symbol']} closed", msg)
+        notify(f"{c['symbol']} exited", msg)
     return closed
 
 
