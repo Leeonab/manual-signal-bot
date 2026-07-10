@@ -136,6 +136,100 @@ def health():
     )
 
 
+@app.get("/history.json")
+def history_json():
+    return jsonify(tracker.load_history())
+
+
+@app.get("/dashboard")
+def dashboard():
+    from collections import defaultdict
+
+    hist = tracker.load_history()
+    n = len(hist)
+    wins = sum(1 for h in hist if h.get("pnl_pct", 0) >= 0)
+    losses = n - wins
+    win_rate = (wins / n * 100) if n else 0.0
+    cum = sum(h.get("pnl_pct", 0) for h in hist)
+    avg = (cum / n) if n else 0.0
+    delays = [h["signal_age_sec"] for h in hist if h.get("signal_age_sec") is not None]
+    avg_delay = (sum(delays) / len(delays)) if delays else None
+    max_delay = max(delays) if delays else None
+
+    days = defaultdict(lambda: {"n": 0, "w": 0, "net": 0.0})
+    for h in hist:
+        d = days[h.get("date", "?")]
+        d["n"] += 1
+        d["w"] += 1 if h.get("pnl_pct", 0) >= 0 else 0
+        d["net"] += h.get("pnl_pct", 0)
+    day_rows = sorted(days.items())
+
+    def card(label, value, sub=""):
+        return (f'<div class="card"><div class="lbl">{label}</div>'
+                f'<div class="val">{value}</div><div class="sub">{sub}</div></div>')
+
+    delay_txt = f"{avg_delay:.0f}s" if avg_delay is not None else "—"
+    delay_sub = f"max {max_delay:.0f}s" if max_delay is not None else "no data yet"
+    cards = "".join([
+        card("Trades", n, f"{wins}W / {losses}L"),
+        card("Win rate", f"{win_rate:.0f}%"),
+        card("Cumulative", f"{cum:+.2f}%", "sum of per-trade %"),
+        card("Avg / trade", f"{avg:+.2f}%"),
+        card("Avg delay", delay_txt, delay_sub),
+    ])
+
+    labels = [d for d, _ in day_rows]
+    net_data = [round(v["net"], 2) for _, v in day_rows]
+    day_table = "".join(
+        f"<tr><td>{d}</td><td>{v['n']}</td><td>{v['w']}/{v['n'] - v['w']}</td>"
+        f"<td class='{'pos' if v['net'] >= 0 else 'neg'}'>{v['net']:+.2f}%</td></tr>"
+        for d, v in day_rows
+    ) or "<tr><td colspan=4>No trades logged yet.</td></tr>"
+
+    recent = list(reversed(hist))[:25]
+    recent_table = "".join(
+        f"<tr><td>{h.get('date','')}</td><td>{h.get('time','')}</td><td><b>{h.get('symbol','')}</b></td>"
+        f"<td>${h.get('entry','')}</td><td>${h.get('exit','')}</td><td>{h.get('result','')}</td>"
+        f"<td class='{'pos' if h.get('pnl_pct',0) >= 0 else 'neg'}'>{h.get('pnl_pct',0):+.2f}%</td>"
+        f"<td>{'' if h.get('signal_age_sec') is None else str(h.get('signal_age_sec')) + 's'}</td></tr>"
+        for h in recent
+    ) or "<tr><td colspan=8>No trades logged yet.</td></tr>"
+
+    html = f"""<!doctype html><html><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>Manual Signal Bot — Performance</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+ body{{background:#0d1117;color:#e6edf3;font-family:-apple-system,Segoe UI,Roboto,sans-serif;margin:0;padding:20px}}
+ h1{{font-size:20px;margin:0 0 4px}} .muted{{color:#8b949e;font-size:13px;margin-bottom:18px}}
+ .cards{{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px}}
+ .card{{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:14px 18px;min-width:120px}}
+ .lbl{{color:#8b949e;font-size:12px}} .val{{font-size:24px;font-weight:700;margin:4px 0}} .sub{{color:#8b949e;font-size:11px}}
+ table{{width:100%;border-collapse:collapse;margin:10px 0 26px;font-size:13px}}
+ th,td{{text-align:left;padding:7px 10px;border-bottom:1px solid #21262d}} th{{color:#8b949e;font-weight:600}}
+ .pos{{color:#3fb950}} .neg{{color:#f85149}} h2{{font-size:15px;margin:18px 0 6px}}
+ canvas{{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:10px;max-height:260px}}
+ .note{{color:#8b949e;font-size:12px;margin-top:8px}}
+</style></head><body>
+<h1>📊 Manual Signal Bot — Performance</h1>
+<div class=muted>All-time signal history · simulated on suggested entries (not your real Blink fills)</div>
+<div class=cards>{cards}</div>
+<h2>Daily net %</h2>
+<canvas id=chart></canvas>
+<h2>By day</h2>
+<table><tr><th>Date</th><th>Trades</th><th>W/L</th><th>Net %</th></tr>{day_table}</table>
+<h2>Recent trades</h2>
+<table><tr><th>Date</th><th>Time</th><th>Symbol</th><th>Entry</th><th>Exit</th><th>Result</th><th>P&L</th><th>Delay</th></tr>{recent_table}</table>
+<div class=note>Delay = how old the market data was when the signal fired. Refresh to update.</div>
+<script>
+new Chart(document.getElementById('chart'),{{type:'bar',
+ data:{{labels:{labels},datasets:[{{label:'net %',data:{net_data},
+ backgroundColor:{net_data}.map(v=>v>=0?'#238636':'#da3633')}}]}},
+ options:{{plugins:{{legend:{{display:false}}}},scales:{{x:{{ticks:{{color:'#8b949e'}}}},y:{{ticks:{{color:'#8b949e'}}}}}}}}}});
+</script></body></html>"""
+    return html
+
+
 @app.get("/status")
 def status():
     st = tracker.load()

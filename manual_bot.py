@@ -10,6 +10,8 @@ No broker order is ever placed. The flow:
 
 from __future__ import annotations
 
+import time
+
 import config
 import data
 import tracker
@@ -68,6 +70,11 @@ def scan_for_signals(allow_new: bool = True) -> list[dict]:
                     continue
                 decision = _reanchor(decision, real)
             decision["trail_pct"] = trail_pct_for(decision)
+            # Delay metric: how stale was the data when the signal fired?
+            try:
+                decision["signal_age_sec"] = int(max(time.time() - df1.index[-1].timestamp(), 0))
+            except Exception:  # noqa: BLE001
+                decision["signal_age_sec"] = None
             tracker.record_signal(decision)
             notify(f"BUY signal {sym}", format_alert(decision))
             fired.append(decision)

@@ -57,6 +57,28 @@ def save(state: dict) -> None:
         json.dump(state, fh, indent=2)
 
 
+# ---------------------------------------------------------------------------
+# All-time history (never resets; survives redeploys when on a volume)
+# ---------------------------------------------------------------------------
+def load_history() -> list[dict]:
+    try:
+        with open(config.HISTORY_FILE, "r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def append_history(records: list[dict]) -> None:
+    if not records:
+        return
+    hist = load_history()
+    for r in records:
+        hist.append({"date": _today(), **r})
+    os.makedirs(config.DATA_DIR, exist_ok=True)
+    with open(config.HISTORY_FILE, "w", encoding="utf-8") as fh:
+        json.dump(hist, fh, indent=2)
+
+
 def set_watchlist(picks: list[dict]) -> dict:
     state = load()
     state["watchlist"] = [p["symbol"] for p in picks]
@@ -85,6 +107,7 @@ def record_signal(decision: dict) -> dict:
             "peak": entry,  # highest price seen since entry (for trailing sim)
             "time": datetime.now(config.TZ).strftime("%H:%M"),
             "trigger": decision.get("trigger"),
+            "signal_age_sec": decision.get("signal_age_sec"),  # data delay at signal
         }
     )
     save(state)
@@ -125,18 +148,21 @@ def update_open(prices: dict[str, float]) -> list[dict]:
             still_open.append(sig)
     state["open_signals"] = still_open
     save(state)
+    append_history(closed_now)   # persist to the all-time log
     return closed_now
 
 
 def close_all_eod(prices: dict[str, float]) -> dict:
     """At end of day, mark any still-open signal at last price (no overnight)."""
     state = load()
+    eod_closed = []
     for sig in state["open_signals"]:
         px = prices.get(sig["symbol"], sig["entry"])
         pnl_pct = (px - sig["entry"]) / sig["entry"] * 100.0
         rec = {**sig, "exit": round(px, 2), "result": "EOD",
                "pnl_pct": round(pnl_pct, 2)}
         state["closed_signals"].append(rec)
+        eod_closed.append(rec)
         if pnl_pct >= 0:
             state["wins"] += 1
         else:
@@ -144,6 +170,7 @@ def close_all_eod(prices: dict[str, float]) -> dict:
         state["signal_pnl_pct"] = round(state["signal_pnl_pct"] + pnl_pct, 2)
     state["open_signals"] = []
     save(state)
+    append_history(eod_closed)   # persist to the all-time log
     return state
 
 

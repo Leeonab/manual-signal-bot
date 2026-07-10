@@ -119,8 +119,13 @@ EMAIL_FROM = os.getenv("EMAIL_FROM", "onboarding@resend.dev").strip()
 # ---------------------------------------------------------------------------
 # State
 # ---------------------------------------------------------------------------
-STATE_DIR = os.getenv("STATE_DIR", "memory")
-STATE_FILE = os.path.join(STATE_DIR, "manual_state.json")
+# Persistent storage. Mount a Railway Volume and set DATA_DIR=/data so the
+# daily state AND the all-time history survive redeploys. Falls back to a local
+# folder (ephemeral) if no volume is configured.
+DATA_DIR = os.getenv("DATA_DIR", os.getenv("STATE_DIR", "memory"))
+STATE_DIR = DATA_DIR
+STATE_FILE = os.path.join(DATA_DIR, "manual_state.json")
+HISTORY_FILE = os.path.join(DATA_DIR, "history.json")   # all-time trade log
 
 # A standing disclaimer appended to every actionable alert.
 DISCLAIMER = (
