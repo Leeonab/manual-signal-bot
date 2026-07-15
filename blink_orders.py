@@ -17,8 +17,14 @@ import config
 
 
 def trail_pct_for(decision: dict) -> float:
-    """Trailing distance: the ATR stop, floored so it doesn't whipsaw."""
-    return round(max(decision.get("stop_pct", config.TRAIL_MIN_PCT), config.TRAIL_MIN_PCT), 2)
+    """
+    Trailing distance scaled to the stock's DAILY volatility so it survives
+    normal intraday noise: trail ≈ clamp(daily_ATR% × fraction, MIN, MAX).
+    Falls back to the floor if daily ATR isn't available.
+    """
+    atrp = decision.get("daily_atr_pct")
+    raw = (atrp * config.TRAIL_ATR_FRACTION) if atrp else config.TRAIL_MIN_PCT
+    return round(min(max(raw, config.TRAIL_MIN_PCT), config.TRAIL_MAX_PCT), 2)
 
 
 def _size_for_trade(entry: float) -> dict:

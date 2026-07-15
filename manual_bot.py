@@ -17,7 +17,7 @@ import data
 import tracker
 from blink_orders import format_alert, trail_pct_for
 from screener import run_screen, format_watchlist
-from smc_wyckoff import decide
+from smc_wyckoff import decide, atr as _atr
 
 
 def run_premarket_screen() -> list[dict]:
@@ -69,6 +69,9 @@ def scan_for_signals(allow_new: bool = True) -> list[dict]:
                           f"(bar ${bar_price} vs real ${real}, {drift:.1f}% off)")
                     continue
                 decision = _reanchor(decision, real)
+            # Size the trailing stop to the stock's DAILY volatility (not 1-min
+            # noise) so it doesn't whipsaw out on normal wiggles.
+            decision["daily_atr_pct"] = _daily_atr_pct(sym)
             decision["trail_pct"] = trail_pct_for(decision)
             # Delay metric: how stale was the data when the signal fired?
             try:
@@ -80,6 +83,17 @@ def scan_for_signals(allow_new: bool = True) -> list[dict]:
             fired.append(decision)
 
     return fired
+
+
+def _daily_atr_pct(symbol: str) -> float | None:
+    """Daily ATR as % of price — used to size the trailing stop to volatility."""
+    df = data.get_bars(symbol, "1Day", limit=30)
+    if len(df) < 15:
+        return None
+    try:
+        return float(_atr(df, 14).iloc[-1]) / float(df["close"].iloc[-1]) * 100.0
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _reanchor(decision: dict, real_price: float) -> dict:

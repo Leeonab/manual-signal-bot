@@ -60,10 +60,13 @@ TP_ATR_MULT = 2.0
 TP_MIN_PCT = 0.008           # 0.8%
 TP_MAX_PCT = 0.025           # 2.5%
 
-# Blink exit is a single Sell Trailing Stop. The trail distance = the strategy's
-# ATR stop, but never tighter than this floor (tight trails whipsaw on volatile
-# names). You can widen it in the app if you see early exits.
-TRAIL_MIN_PCT = 1.0
+# Blink exit is a single Sell Trailing Stop. The trail distance SCALES WITH THE
+# STOCK'S OWN DAILY VOLATILITY so it doesn't get whipsawed out on normal noise.
+# A name with 6% daily ATR needs ~2.4% of room; a flat 1% would stop out
+# constantly. trail ≈ clamp(daily_ATR% × TRAIL_ATR_FRACTION, MIN, MAX).
+TRAIL_ATR_FRACTION = 0.4
+TRAIL_MIN_PCT = 1.5
+TRAIL_MAX_PCT = 4.0
 
 # (legacy advisory, unused)
 TRAIL_BREAKEVEN_AT = 0.010
